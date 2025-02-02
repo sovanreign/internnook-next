@@ -15,8 +15,97 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { DocusealForm } from "@docuseal/react";
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { MdOutlineCreate } from "react-icons/md";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useSearchParams } from "next/navigation";
+import { Moa } from "@/app/models/models";
 
 export default function SigningDetails() {
+  const [moa, setMoa] = useState<Moa>();
+  const searchParams = useSearchParams();
+  const moaId = searchParams.get("id");
+  const role = localStorage.getItem("role");
+  const [openDialog, setOpenDialog] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const [submissionStatus, setSubmissionStatus] = useState({
+    student: false,
+    coordinator: false,
+    company: false,
+  });
+
+  useEffect(() => {
+    const fetchSubmissionStatus = async () => {
+      try {
+        if (!moaId) return;
+        const token = localStorage.getItem("access_token");
+
+        const response = await axios.get(
+          `https://docuseal.com/submissions/${moaId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        const submissionData = response.data;
+        console.log("Submission Data:", submissionData);
+
+        setSubmissionStatus({
+          student: submissionData.studentSigned || false,
+          coordinator: submissionData.coordinatorSigned || false,
+          company: submissionData.companySigned || false,
+        });
+      } catch (error) {
+        console.error("Error fetching submission status:", error);
+      }
+    };
+
+    fetchSubmissionStatus();
+  }, [moaId]);
+
+  useEffect(() => {
+    const fetchMoa = async () => {
+      try {
+        setLoading(true);
+        const token = localStorage.getItem("access_token");
+
+        const response = await axios.get(
+          `${process.env.NEXT_PUBLIC_MOAS_URL}/${moaId}`, // Replace with correct endpoint
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        setMoa(response.data);
+        console.log("Fetched MOA:", response.data);
+      } catch (error) {
+        console.error("Error fetching MOA:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (moaId) {
+      fetchMoa();
+    }
+  }, [moaId]);
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <Body>
       <main className="w-full">
@@ -50,18 +139,29 @@ export default function SigningDetails() {
             <Card className="bg-white shadow-sm rounded-lg">
               <CardHeader className="flex justify-between items-center">
                 <CardTitle className="text-lg font-semibold">
-                  Document Viewer
+                  Document Signing
                 </CardTitle>
-                <Button className="text-sm">Sign Document</Button>
               </CardHeader>
               <CardContent>
-                <div className="w-full h-[500px] bg-gray-100 rounded-lg border flex items-center justify-center text-gray-400">
-                  <embed
-                    src="/MOA.pdf"
-                    width="100%"
-                    height="100%"
-                    type="application/pdf"
-                  />
+                <div className="w-full flex justify-center gap-2">
+                  <Button
+                    disabled={role !== "Student"}
+                    onClick={() => setOpenDialog("Student")}
+                  >
+                    <MdOutlineCreate /> Student Sign
+                  </Button>
+                  <Button
+                    disabled={role !== "Coordinator"}
+                    onClick={() => setOpenDialog("Coordinator")}
+                  >
+                    <MdOutlineCreate /> Coordinator Sign
+                  </Button>
+                  <Button
+                    disabled={role !== "Company"}
+                    onClick={() => setOpenDialog("Company")}
+                  >
+                    <MdOutlineCreate /> Company Sign
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -93,28 +193,32 @@ export default function SigningDetails() {
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
                   <p className="text-sm font-medium text-gray-600">Student:</p>
-                  <p className="text-sm text-gray-800">John Doe</p>
+                  <p className="text-sm text-gray-800">
+                    {moa?.student.firstName} {moa?.student.lastName}
+                  </p>
                 </div>
                 <div className="flex justify-between">
                   <p className="text-sm font-medium text-gray-600">
                     Coordinator:
                   </p>
-                  <p className="text-sm text-gray-800">Dr. Alice Johnson</p>
+                  <p className="text-sm text-gray-800">
+                    {moa?.coordinator.firstName} {moa?.coordinator.lastName}
+                  </p>
                 </div>
                 <div className="flex justify-between">
                   <p className="text-sm font-medium text-gray-600">
                     Organization:
                   </p>
-                  <p className="text-sm text-gray-800">Stanford University</p>
+                  <p className="text-sm text-gray-800">{moa?.student.school}</p>
                 </div>
                 <div className="flex justify-between">
                   <p className="text-sm font-medium text-gray-600">Company:</p>
-                  <p className="text-sm text-gray-800">Tech Innovators Inc.</p>
+                  <p className="text-sm text-gray-800">{moa?.company.name}</p>
                 </div>
                 <div className="flex justify-between items-center">
                   <p className="text-sm font-medium text-gray-600">Status:</p>
                   <Badge variant="outline" className="text-sm">
-                    Pending
+                    {moa?.status}
                   </Badge>
                 </div>
               </CardContent>
@@ -159,6 +263,41 @@ export default function SigningDetails() {
               </CardContent>
             </Card>
           </div>
+
+          {openDialog && (
+            <Dialog
+              open={!!openDialog}
+              onOpenChange={() => setOpenDialog(null)}
+            >
+              <DialogContent className="max-w-4xl">
+                <DialogHeader>
+                  <DialogTitle>{openDialog} Signature</DialogTitle>
+                </DialogHeader>
+                <div className="w-[800px] max-w-full h-[600px] bg-gray-100 rounded-lg border overflow-auto p-4">
+                  <div>
+                    {openDialog === "Student" && (
+                      <DocusealForm
+                        src={`https://docuseal.com/s/${moa?.studentSlug}`}
+                        email={moa?.student.user.email}
+                      />
+                    )}
+                    {openDialog === "Coordinator" && (
+                      <DocusealForm
+                        src={`https://docuseal.com/s/${moa?.coordinatorSlug}`}
+                        email={moa?.coordinator.user.email}
+                      />
+                    )}
+                    {openDialog === "Company" && (
+                      <DocusealForm
+                        src={`https://docuseal.com/s/${moa?.companySlug}`}
+                        email={moa?.company.user.email}
+                      />
+                    )}
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
         </SidebarInset>
       </main>
     </Body>

@@ -7,6 +7,7 @@ import {
   MdOutlineCardTravel,
   MdOutlineDashboard,
   MdOutlineDescription,
+  MdOutlineGroups,
   MdOutlinePerson,
 } from "react-icons/md";
 
@@ -24,6 +25,7 @@ import {
 import { AlertDialogTrigger } from "./ui/alert-dialog";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import Image from "next/image";
 
 // Menu items.
 const items = [
@@ -40,10 +42,16 @@ const items = [
     roles: ["Student", "Coordinator", "Company"],
   },
   {
+    title: "Students",
+    url: "/students",
+    icon: MdOutlineGroups,
+    roles: ["Coordinator"],
+  },
+  {
     title: "Applications",
     url: "/applications",
     icon: MdOutlineDescription,
-    roles: ["Student", "Company"],
+    roles: ["Student"],
   },
   {
     title: "Signings",
@@ -82,11 +90,15 @@ export function AppSidebar() {
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                <Settings className="size-4" />
-              </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">Internnook</span>
+                <span className="truncate font-semibold">
+                  <Image
+                    src={"/logo-light.svg"}
+                    alt=""
+                    width={130}
+                    height={130}
+                  />
+                </span>
                 {/* <span className="truncate text-xs">
                   Internship at your nook
                 </span> */}

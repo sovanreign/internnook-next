@@ -37,6 +37,7 @@ export default function InternshipDetail() {
   const [applyDialogOpen, setApplyDialogOpen] = useState(false);
   const [internship, setInternship] = useState<Internship | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasApplied, setHasApplied] = useState(false);
 
   const role = localStorage.getItem("role");
   const id = parseInt(localStorage.getItem("id")!);
@@ -72,6 +73,10 @@ export default function InternshipDetail() {
             },
           }
         );
+        const alreadyApplied = response.data.applications.some(
+          (app) => app.studentId === id
+        );
+        setHasApplied(alreadyApplied);
         setInternship(response.data);
       } catch (err) {
         console.error("Error fetching internship:", err);
@@ -82,7 +87,32 @@ export default function InternshipDetail() {
     };
 
     fetchInternship();
-  }, [internshipId, router]);
+  }, [internshipId, router, id]);
+
+  const handleApply = async () => {
+    if (!internshipId || !id) return;
+
+    try {
+      await axios.post(
+        `${process.env.NEXT_PUBLIC_APPLICATIONS_URL}`,
+        {
+          studentId: id,
+          internshipId: parseInt(internshipId),
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          },
+        }
+      );
+
+      setApplyDialogOpen(false);
+      alert("Application submitted successfully!");
+    } catch (error) {
+      console.error("Error applying for internship:", error);
+      router.push("/error");
+    }
+  };
 
   if (loading) return <main>Loading...</main>;
 
@@ -161,15 +191,24 @@ export default function InternshipDetail() {
                 </div>
               </section>
 
-              <section className="mt-6 flex flex-col md:flex-row items-center justify-between  p-6 rounded-lg">
-                {/* Applicants Count */}
-                <div className="flex items-center">
-                  <p className="text-lg text-gray-800 font-semibold">
-                    📊 Total Applicants: 3
-                  </p>
-                </div>
-                <Button variant="outline">View Applicants</Button>
-              </section>
+              {role === "Company" && (
+                <section className="mt-6 flex flex-col md:flex-row items-center justify-between  p-6 rounded-lg">
+                  {/* Applicants Count */}
+                  <div className="flex items-center">
+                    <p className="text-lg text-gray-800 font-semibold">
+                      📊 Total Applicants: {internship?.applications.length}
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      router.push(`/internships/applicants?id=${internshipId}`)
+                    }
+                  >
+                    View Applicants
+                  </Button>
+                </section>
+              )}
 
               {/* Combined Details Section */}
               <section className="mt-10">
@@ -193,8 +232,9 @@ export default function InternshipDetail() {
                   <Button
                     onClick={() => setApplyDialogOpen(true)}
                     className="px-6 py-3 text-lg"
+                    disabled={hasApplied}
                   >
-                    Apply for Internship
+                    {hasApplied ? "Applied" : "Apply for Internship"}
                   </Button>
                 ) : (
                   ""
@@ -215,7 +255,9 @@ export default function InternshipDetail() {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction>Apply</AlertDialogAction>
+                  <AlertDialogAction onClick={handleApply}>
+                    Apply
+                  </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>

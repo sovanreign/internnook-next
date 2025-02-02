@@ -27,6 +27,7 @@ import { useRouter } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
+import Head from "next/head";
 
 const SignupFormSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -99,6 +100,9 @@ export default function Signup() {
 
   return (
     <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
+      <Head>
+        <title>Internnook</title>
+      </Head>
       <div className="w-full max-w-sm">
         <div className={cn("flex flex-col gap-6")}>
           <Card>

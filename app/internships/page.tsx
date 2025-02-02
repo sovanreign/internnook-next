@@ -185,13 +185,15 @@ export default function Internships() {
                         </div>
                       </CardHeader>
 
-                      <CardContent>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-500">
-                            3 applicants
-                          </span>
-                        </div>
-                      </CardContent>
+                      {role === "Company" && (
+                        <CardContent>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-500">
+                              {internship.applications.length} applicants
+                            </span>
+                          </div>
+                        </CardContent>
+                      )}
                     </Card>
                   ))}
                 </div>

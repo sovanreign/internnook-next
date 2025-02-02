@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 import { SidebarProvider } from "@/components/ui/sidebar";
+import Head from "next/head";
 import { useRouter } from "next/navigation";
 
 import { ReactNode } from "react";
@@ -27,6 +28,9 @@ export default function Body({ children }: { children: ReactNode }) {
 
   return (
     <AlertDialog>
+      <Head>
+        <title>Internnook</title>
+      </Head>
       <SidebarProvider>
         <AppSidebar />
         {children}

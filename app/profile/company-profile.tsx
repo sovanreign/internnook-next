@@ -105,7 +105,7 @@ const CompanyProfile = () => {
       </Card>
 
       {/* Internship Listings */}
-      <Card className="bg-white shadow-sm rounded-lg">
+      {/* <Card className="bg-white shadow-sm rounded-lg">
         <CardHeader>
           <CardTitle className="text-lg font-semibold">
             Available Internships
@@ -156,7 +156,7 @@ const CompanyProfile = () => {
             </li>
           </ul>
         </CardContent>
-      </Card>
+      </Card> */}
     </div>
   );
 };
