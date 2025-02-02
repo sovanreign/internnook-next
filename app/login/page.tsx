@@ -11,15 +11,84 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
+import { z } from "zod";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import axios from "axios";
+import { jwtDecode } from "jwt-decode";
+import { Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
-export default function Login({
-  className,
-  ...props
-}: React.ComponentPropsWithoutRef<"div">) {
+const LoginFormSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(1, "Password is required"),
+});
+
+type LoginFormValues = z.infer<typeof LoginFormSchema>;
+
+export default function Login() {
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+
+  const {
+    register,
+    handleSubmit,
+    setError,
+    reset,
+    formState: { errors },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(LoginFormSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  const onSubmit = async (data: LoginFormValues) => {
+    try {
+      setIsLoading(true);
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_LOGIN_URL}`,
+        data
+      );
+
+      if (response.status === 201) {
+        const { access_token } = response.data;
+
+        if (access_token) {
+          localStorage.setItem("access_token", access_token);
+          const { role, sub } = jwtDecode(access_token) as {
+            sub: number;
+            role: string;
+          };
+          localStorage.setItem("id", `${sub}`);
+          localStorage.setItem("role", role);
+
+          router.push("/dashboard");
+        }
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      if (error.response?.status === 401) {
+        reset();
+
+        setError("email", {
+          type: "custom",
+          message: "Incorrect email or password",
+        });
+      } else {
+        router.push("/error");
+      }
+
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
       <div className="w-full max-w-sm">
-        <div className={cn("flex flex-col gap-6", className)} {...props}>
+        <div className={cn("flex flex-col gap-6")}>
           <Card>
             <CardHeader>
               <CardTitle className="text-2xl">Login</CardTitle>
@@ -28,7 +97,7 @@ export default function Login({
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form>
+              <form onSubmit={handleSubmit(onSubmit)}>
                 <div className="flex flex-col gap-6">
                   <div className="grid gap-2">
                     <Label htmlFor="email">Email</Label>
@@ -36,8 +105,13 @@ export default function Login({
                       id="email"
                       type="email"
                       placeholder="m@example.com"
-                      required
+                      {...register("email")}
                     />
+                    {errors.email && (
+                      <p className="text-sm text-red-500">
+                        {errors.email.message}
+                      </p>
+                    )}
                   </div>
                   <div className="grid gap-2">
                     <div className="flex items-center">
@@ -49,14 +123,30 @@ export default function Login({
                         Forgot your password?
                       </a>
                     </div>
-                    <Input id="password" type="password" required />
+                    <Input
+                      id="password"
+                      type="password"
+                      {...register("password")}
+                    />
+                    {errors.password && (
+                      <p className="text-sm text-red-500">
+                        {errors.password.message}
+                      </p>
+                    )}
                   </div>
-                  <Button type="submit" className="w-full">
-                    Login
-                  </Button>
-                  <Button variant="outline" className="w-full">
+                  {isLoading ? (
+                    <Button disabled>
+                      <Loader2 className="animate-spin" />
+                      Logging in...
+                    </Button>
+                  ) : (
+                    <Button type="submit" className="w-full">
+                      Log in
+                    </Button>
+                  )}
+                  {/* <Button variant="outline" className="w-full">
                     Login with Google
-                  </Button>
+                  </Button> */}
                 </div>
                 <div className="mt-4 text-center text-sm">
                   Don&apos;t have an account?{" "}

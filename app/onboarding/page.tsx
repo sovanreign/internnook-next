@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Card,
   CardContent,
@@ -12,6 +14,8 @@ import CompanyBoarding from "./company-boarding";
 import CoordinatorBoarding from "./coordinator-boarding";
 
 export default function OnBoarding() {
+  const role = localStorage.getItem("role");
+
   return (
     <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
       <div className="w-full max-w-lg  ">
@@ -24,9 +28,9 @@ export default function OnBoarding() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {/* <StudentBoarding /> */}
-              {/* <CompanyBoarding /> */}
-              <CoordinatorBoarding />
+              {role === "Student" && <StudentBoarding />}
+              {role === "Coordinator" && <CoordinatorBoarding />}
+              {role === "Company" && <CompanyBoarding />}
             </CardContent>
           </Card>
         </div>

@@ -1,4 +1,6 @@
-import { Calendar, Home, Inbox, Search, Settings } from "lucide-react";
+"use client";
+
+import { Settings } from "lucide-react";
 import {
   MdLogout,
   MdNotificationsNone,
@@ -21,6 +23,7 @@ import {
 } from "@/components/ui/sidebar";
 import { AlertDialogTrigger } from "./ui/alert-dialog";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 // Menu items.
 const items = [
@@ -28,30 +31,48 @@ const items = [
     title: "Dashboard",
     url: "/dashboard",
     icon: MdOutlineDashboard,
+    roles: ["Student", "Coordinator", "Company"],
   },
   {
     title: "Internships",
     url: "/internships",
     icon: MdOutlineCardTravel,
+    roles: ["Student", "Coordinator", "Company"],
   },
   {
     title: "Applications",
-    url: "#",
+    url: "/applications",
     icon: MdOutlineDescription,
+    roles: ["Student", "Company"],
+  },
+  {
+    title: "Signings",
+    url: "/signings",
+    icon: MdOutlineDescription,
+    roles: ["Student", "Coordinator", "Company"],
   },
   {
     title: "Notifications",
-    url: "#",
+    url: "/notifications",
     icon: MdNotificationsNone,
+    roles: ["Student", "Coordinator", "Company"],
   },
   {
     title: "Profile",
-    url: "#",
+    url: "/profile",
     icon: MdOutlinePerson,
+    roles: ["Student", "Coordinator", "Company"],
   },
 ];
 
 export function AppSidebar() {
+  const [role, setRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    const storedRole = localStorage.getItem("role");
+    setRole(storedRole);
+  }, []);
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
@@ -79,19 +100,21 @@ export function AppSidebar() {
           <SidebarGroupLabel>Application</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <Link href={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {items
+                .filter((item) => item.roles.includes(role ?? ""))
+                .map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <Link href={item.url}>
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
-                  <a href="#">
+                  <a>
                     <MdLogout />
                     <AlertDialogTrigger>Logout</AlertDialogTrigger>
                   </a>

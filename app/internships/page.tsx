@@ -1,21 +1,19 @@
+"use client";
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbList,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
-import { Separator } from "@/components/ui/separator";
-import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
-import Body from "../body";
+import { Button } from "@/components/ui/button";
 import {
   Card,
+  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import Image from "next/image";
-import { SearchIcon } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -24,33 +22,68 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchIcon } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { MdAdd } from "react-icons/md";
+import { Separator } from "@/components/ui/separator";
+import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import Body from "../body";
+
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { Internship } from "../models/models";
+import { useRouter } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
 
 export default function Internships() {
-  const cards = [
-    {
-      title: "Card 1",
-      description: "This is the first card in the list.",
-    },
-    {
-      title: "Card 2",
-      description: "This is the second card in the list.",
-    },
-    {
-      title: "Card 3",
-      description: "This is the third card in the list.",
-    },
-    {
-      title: "Card 4",
-      description: "This is the fourth card in the list.",
-    },
-    {
-      title: "Card 5",
-      description: "This is the fifth card in the list.",
-    },
-  ];
+  const [internships, setInternships] = useState<Internship[]>([]);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const role = localStorage.getItem("role");
+  const [filteredInternships, setFilteredInternships] = useState<Internship[]>(
+    []
+  );
+  const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    const fetchInternships = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get(
+          `${process.env.NEXT_PUBLIC_INTERNSHIPS_URL}`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+            },
+          }
+        );
+        setInternships(response.data);
+        setFilteredInternships(response.data);
+      } catch (err) {
+        console.error("Failed to fetch internships:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInternships();
+  }, []);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const query = e.target.value.toLowerCase();
+    setSearchQuery(query);
+
+    const filtered = internships.filter(
+      (internship) =>
+        internship.position.toLowerCase().includes(query) ||
+        internship.shortInfo.toLowerCase().includes(query)
+    );
+
+    setFilteredInternships(filtered);
+  };
+
+  if (loading) return <main>Loading...</main>;
 
   return (
     <Body>
@@ -77,53 +110,93 @@ export default function Internships() {
                 <SearchIcon className="h-4 w-4" />
                 <Input
                   type="search"
-                  placeholder="Search"
-                  className="w-full border-0 h-8 font-semibold "
+                  placeholder="Search internships..."
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  className="w-full border-0 h-8 font-semibold"
                 />
               </div>
-              <div>
-                <Select>
-                  <SelectTrigger className="">
-                    <SelectValue placeholder="Filter by industry" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectItem value="apple">Tech</SelectItem>
-                      <SelectItem value="banana">Food</SelectItem>
-                      <SelectItem value="blueberry">Health</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Button>
-                  <MdAdd /> Add Internship
-                </Button>
-              </div>
+              {role === "Company" ? (
+                ""
+              ) : (
+                <div>
+                  <Select>
+                    <SelectTrigger className="">
+                      <SelectValue placeholder="Filter by industry" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectItem value="apple">Tech</SelectItem>
+                        <SelectItem value="banana">Food</SelectItem>
+                        <SelectItem value="blueberry">Health</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {role === "Company" && (
+                <div>
+                  <Link href="/internships/create">
+                    <Button>
+                      <MdAdd /> Add Internship
+                    </Button>
+                  </Link>
+                </div>
+              )}
             </div>
-            <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {cards.map((card, index) => (
-                <Link key={index} href="/internships/detail">
-                  <Card className="cursor-pointer">
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                          <Image
-                            src="/next.svg"
-                            alt="logo"
-                            width={50}
-                            height={50}
-                            className="py-2"
-                          />
-                          <CardTitle>{card.title}</CardTitle>
-                          <CardDescription>{card.description}</CardDescription>
+            {filteredInternships.length === 0 ? (
+              <div className="w-full text-center mt-10">
+                No internship position posted yet
+              </div>
+            ) : (
+              <>
+                <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                  {filteredInternships.map((internship) => (
+                    <Card
+                      key={internship.id}
+                      className="relative cursor-pointer"
+                      onClick={() =>
+                        router.push(`/internships/detail?id=${internship.id}`)
+                      }
+                    >
+                      <Badge
+                        variant={internship.isOpen ? "default" : "destructive"}
+                        className="absolute top-2 right-2"
+                      >
+                        {internship.isOpen ? "Open" : "Closed"}
+                      </Badge>
+
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-1">
+                            <Image
+                              src={`${process.env.NEXT_PUBLIC_API_BASE_URL}${internship.company.logoUrl}`}
+                              alt="logo"
+                              width={50}
+                              height={50}
+                              className="py-2 rounded-lg"
+                            />
+                            <CardTitle>{internship.position}</CardTitle>
+                            <CardDescription>
+                              {internship.shortInfo}
+                            </CardDescription>
+                          </div>
                         </div>
-                      </div>
-                    </CardHeader>
-                  </Card>
-                </Link>
-              ))}
-            </div>
+                      </CardHeader>
+
+                      <CardContent>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-500">
+                            3 applicants
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </SidebarInset>
       </main>

@@ -1,7 +1,13 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { convertToRaw, EditorState, RichUtils } from "draft-js";
+import axios from "axios";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { EditorState, RichUtils, convertFromRaw, convertToRaw } from "draft-js";
 import "draft-js/dist/Draft.css";
 
 const Editor = dynamic(() => import("draft-js").then((mod) => mod.Editor), {
@@ -21,94 +27,116 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useEffect, useState } from "react";
-import { z } from "zod";
-import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import axios from "axios";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2 } from "lucide-react";
+import { Label } from "@/components/ui/label";
 
+const INTERNSHIPS_API = process.env.NEXT_PUBLIC_INTERNSHIPS_URL;
+
+// Define Zod Schema for Form Validation
 const internshipSchema = z.object({
   position: z.string().min(2, "Position is required"),
   shortInfo: z.string().min(5, "Short Info must be at least 5 characters"),
-  // description: z.string().min(1, "Description must be at least 10 characters"),
 });
 
 type InternshipFormValues = z.infer<typeof internshipSchema>;
 
-export default function AddInternshipPage() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [editorState, setEditorState] = useState(() =>
-    EditorState.createEmpty()
-  );
-
+export default function UpdateInternshipPage() {
+  const searchParams = useSearchParams();
+  const internshipId = searchParams.get("id"); // Get `id` from query params
   const router = useRouter();
 
+  const [editorState, setEditorState] = useState(EditorState.createEmpty());
+  const [loading, setLoading] = useState(true);
   const [companyId, setCompanyId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const storedCompanyId = localStorage.getItem("id");
-    if (storedCompanyId) {
-      setCompanyId(storedCompanyId);
-    } else {
-      router.push("/login"); // Redirect if no companyId found
-    }
-  }, [router]);
 
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    setValue,
+    formState: { errors, isSubmitting },
   } = useForm<InternshipFormValues>({
     resolver: zodResolver(internshipSchema),
   });
 
-  const getEditorContent = () => {
+  useEffect(() => {
+    // Fetch internship details
+    const fetchInternship = async () => {
+      if (!internshipId) {
+        router.push("/error");
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const storedCompanyId = localStorage.getItem("id");
+        setCompanyId(storedCompanyId);
+
+        const response = await axios.get(`${INTERNSHIPS_API}/${internshipId}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          },
+        });
+
+        const { position, shortInfo, description } = response.data;
+
+        // Pre-fill form fields
+        setValue("position", position);
+        setValue("shortInfo", shortInfo);
+
+        // Set Draft.js editor state
+        const contentState = convertFromRaw(JSON.parse(description));
+        setEditorState(EditorState.createWithContent(contentState));
+      } catch (error) {
+        console.error("Error fetching internship details:", error);
+        router.push("/error");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInternship();
+  }, [internshipId, router, setValue]);
+
+  // Convert Draft.js Content to JSON
+  const getEditorContentAsJSON = () => {
     const contentState = editorState.getCurrentContent();
     return JSON.stringify(convertToRaw(contentState));
   };
 
-  // Handle inline styles (bold, italic)
+  // Handle Inline Styling (Bold, Italic)
   const handleInlineStyle = (style: string) => {
     setEditorState(RichUtils.toggleInlineStyle(editorState, style));
   };
 
-  // Handle block styles (unordered-list-item, ordered-list-item)
+  // Handle Block Styles (Unordered & Ordered List)
   const handleBlockType = (blockType: string) => {
     setEditorState(RichUtils.toggleBlockType(editorState, blockType));
   };
 
+  // Handle Form Submission
   const onSubmit = async (data: InternshipFormValues) => {
     try {
-      setIsLoading(true);
       const internshipData = {
         position: data.position,
         shortInfo: data.shortInfo,
-        description: getEditorContent(),
+        description: getEditorContentAsJSON(),
         companyId: Number(companyId),
       };
 
-      await axios.post(
-        `${process.env.NEXT_PUBLIC_INTERNSHIPS_URL}`,
-        internshipData,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-          },
-        }
-      );
+      await axios.patch(`${INTERNSHIPS_API}/${internshipId}`, internshipData, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        },
+      });
 
-      router.push("/internships");
+      router.push(`/internships/detail?id=${internshipId}`);
     } catch (error) {
-      console.error("Failed to create internship:", error);
-      router.push("/error");
-    } finally {
-      setIsLoading(false);
+      console.error("Failed to update internship:", error);
+      alert("Failed to update internship. Please try again.");
     }
   };
+
+  if (loading) return <main>Loading...</main>;
 
   return (
     <Body>
@@ -131,7 +159,7 @@ export default function AddInternshipPage() {
                   <BreadcrumbSeparator className="hidden md:block" />
                   <BreadcrumbItem className="hidden md:block">
                     <BreadcrumbPage className="font-semibold">
-                      Create
+                      Update
                     </BreadcrumbPage>
                   </BreadcrumbItem>
                 </BreadcrumbList>
@@ -161,6 +189,7 @@ export default function AddInternshipPage() {
                 )}
               </div>
 
+              {/* Short Info */}
               <div>
                 <Label htmlFor="short-info" className="text-lg font-medium">
                   Short Info
@@ -235,16 +264,9 @@ export default function AddInternshipPage() {
 
               {/* Submit Button */}
               <div className="text-right">
-                {isLoading ? (
-                  <Button disabled>
-                    <Loader2 className="animate-spin" />
-                    Adding...
-                  </Button>
-                ) : (
-                  <Button type="submit" className="">
-                    Add Internship
-                  </Button>
-                )}
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? "Updating..." : "Update Internship"}
+                </Button>
               </div>
             </form>
           </div>

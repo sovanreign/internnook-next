@@ -1,3 +1,5 @@
+"use client";
+
 import { AppSidebar } from "@/components/app-sidebar";
 import {
   AlertDialog,
@@ -11,10 +13,18 @@ import {
 } from "@/components/ui/alert-dialog";
 
 import { SidebarProvider } from "@/components/ui/sidebar";
+import { useRouter } from "next/navigation";
 
 import { ReactNode } from "react";
 
 export default function Body({ children }: { children: ReactNode }) {
+  const router = useRouter();
+
+  const onLogout = () => {
+    localStorage.clear();
+    router.push("/login");
+  };
+
   return (
     <AlertDialog>
       <SidebarProvider>
@@ -29,7 +39,7 @@ export default function Body({ children }: { children: ReactNode }) {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction>Logout</AlertDialogAction>
+            <AlertDialogAction onClick={onLogout}>Logout</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </SidebarProvider>

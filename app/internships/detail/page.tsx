@@ -1,6 +1,7 @@
 "use client";
 
 import Body from "@/app/body";
+import { Internship } from "@/app/models/models";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,12 +24,67 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import axios from "axios";
+import { convertFromRaw } from "draft-js";
 import { StarIcon } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { stateToHTML } from "draft-js-export-html";
+import { MdOutlineModeEdit } from "react-icons/md";
 
 export default function InternshipDetail() {
   const [applyDialogOpen, setApplyDialogOpen] = useState(false);
+  const [internship, setInternship] = useState<Internship | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const role = localStorage.getItem("role");
+  const id = parseInt(localStorage.getItem("id")!);
+
+  const searchParams = useSearchParams();
+  const internshipId = searchParams.get("id");
+  const router = useRouter();
+
+  const formattedDescription = (description: string) => {
+    try {
+      if (description === "" || description === null)
+        return "<p>No description available</p>";
+
+      const contentState = convertFromRaw(JSON.parse(description));
+      return stateToHTML(contentState);
+    } catch (error) {
+      console.error("Error parsing Draft.js content:", error);
+      return "<p>Error displaying description</p>";
+    }
+  };
+
+  useEffect(() => {
+    if (!internshipId) return;
+
+    const fetchInternship = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get<Internship>(
+          `${process.env.NEXT_PUBLIC_INTERNSHIPS_URL}/${internshipId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+            },
+          }
+        );
+        setInternship(response.data);
+      } catch (err) {
+        console.error("Error fetching internship:", err);
+        router.push("/error");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInternship();
+  }, [internshipId, router]);
+
+  if (loading) return <main>Loading...</main>;
 
   return (
     <Body>
@@ -61,7 +117,7 @@ export default function InternshipDetail() {
               <section className="flex flex-col md:flex-row items-center bg-gray-100 p-6 rounded-lg shadow">
                 <div className="flex-shrink-0">
                   <Image
-                    src="/next.svg" // Replace with your logo's path
+                    src={`${process.env.NEXT_PUBLIC_API_BASE_URL}${internship?.company.logoUrl}`}
                     alt="Company Logo"
                     className="rounded"
                     width={80}
@@ -69,12 +125,24 @@ export default function InternshipDetail() {
                   />
                 </div>
                 <div className="flex-grow ml-6">
-                  <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
-                    Frontend Development Intern
-                  </h1>
+                  <div className="flex justify-between items-start">
+                    <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
+                      {internship?.position}
+                    </h1>
+                    {id === internship?.company.userId && (
+                      <Button
+                        onClick={() =>
+                          router.push(`/internships/update?id=${internship.id}`)
+                        }
+                      >
+                        <MdOutlineModeEdit /> Edit
+                      </Button>
+                    )}
+                  </div>
+
                   <p className="text-lg text-gray-600 mt-2">
-                    <span className="font-medium">Company Name:</span> Tech
-                    Innovators
+                    <span className="font-medium">Company Name:</span>{" "}
+                    {internship?.company.name}
                   </p>
                   <div className="flex items-center mt-2">
                     <div className="flex">
@@ -93,6 +161,16 @@ export default function InternshipDetail() {
                 </div>
               </section>
 
+              <section className="mt-6 flex flex-col md:flex-row items-center justify-between  p-6 rounded-lg">
+                {/* Applicants Count */}
+                <div className="flex items-center">
+                  <p className="text-lg text-gray-800 font-semibold">
+                    📊 Total Applicants: 3
+                  </p>
+                </div>
+                <Button variant="outline">View Applicants</Button>
+              </section>
+
               {/* Combined Details Section */}
               <section className="mt-10">
                 <Card>
@@ -100,70 +178,27 @@ export default function InternshipDetail() {
                     <CardTitle>About the Internship</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {/* Description */}
-                    <div className="mb-6">
-                      <h3 className="text-lg font-semibold text-gray-800">
-                        Job Description
-                      </h3>
-                      <p className="text-gray-700 mt-2">
-                        We are looking for a motivated Frontend Development
-                        Intern to join our team! As an intern, you will work
-                        closely with our developers to create user-friendly
-                        interfaces for web applications and contribute to the
-                        overall design process.
-                      </p>
-                    </div>
-
-                    {/* Responsibilities */}
-                    <div className="mb-6">
-                      <h3 className="text-lg font-semibold text-gray-800">
-                        Responsibilities
-                      </h3>
-                      <ul className="list-disc list-inside text-gray-700 space-y-2 mt-2">
-                        <li>
-                          Develop responsive web pages using React and Tailwind
-                          CSS.
-                        </li>
-                        <li>
-                          Participate in agile development processes and daily
-                          standups.
-                        </li>
-                        <li>Work on debugging and optimizing performance.</li>
-                        <li>
-                          Collaborate with designers and backend developers.
-                        </li>
-                      </ul>
-                    </div>
-
-                    {/* Qualifications */}
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-800">
-                        Qualifications
-                      </h3>
-                      <ul className="list-disc list-inside text-gray-700 space-y-2 mt-2">
-                        <li>Basic understanding of React.js and JavaScript.</li>
-                        <li>Familiarity with Tailwind CSS is a plus.</li>
-                        <li>
-                          Good problem-solving skills and attention to detail.
-                        </li>
-                        <li>
-                          Eagerness to learn and grow in a collaborative
-                          environment.
-                        </li>
-                      </ul>
-                    </div>
+                    <div
+                      className="mt-2 prose text-gray-900"
+                      dangerouslySetInnerHTML={{
+                        __html: formattedDescription(internship!.description),
+                      }}
+                    />
                   </CardContent>
                 </Card>
               </section>
 
-              {/* Call to Action Section */}
               <section className="text-center py-10">
-                <Button
-                  onClick={() => setApplyDialogOpen(true)}
-                  className="px-6 py-3 text-lg"
-                >
-                  Apply for Internship
-                </Button>
+                {role === "Student" ? (
+                  <Button
+                    onClick={() => setApplyDialogOpen(true)}
+                    className="px-6 py-3 text-lg"
+                  >
+                    Apply for Internship
+                  </Button>
+                ) : (
+                  ""
+                )}
               </section>
             </div>
 
